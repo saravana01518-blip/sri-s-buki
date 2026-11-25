@@ -5,6 +5,9 @@ const http = require('node:http');
 const { createApp } = require('../app');
 const { createAuthMiddleware } = require('../middleware/auth');
 const { SageConnector } = require('../services/sageConnector');
+const { BukiClient, BukiClientError } = require('../services/bukiClient');
+const { resolveBukiUrl, DEFAULT_BUKI_URL } = require('../config/env');
+const { normalizeBaseUrl, joinUrl } = require('../utils/url');
 
 const TEST_BUKI_TOKEN = 'test-buki-internal-token';
 const TEST_SAGE_KEY = 'test-sage-secret-key';
@@ -220,4 +223,92 @@ test('Pre-Code Test 4b: Latency & Concurrency Check handles 10 simultaneous quer
   } finally {
     await srv.close();
   }
+});
+
+test('URL normalization strips trailing slashes and joins paths without double slashes', () => {
+  assert.equal(normalizeBaseUrl('https://my-buki.onrender.com///'), 'https://my-buki.onrender.com');
+  assert.equal(
+    joinUrl('https://my-buki.onrender.com///', '///api/query'),
+    'https://my-buki.onrender.com/api/query'
+  );
+  assert.equal(
+    joinUrl('https://my-buki.onrender.com', '/api/health'),
+    'https://my-buki.onrender.com/api/health'
+  );
+});
+
+test('resolveBukiUrl respects BUKI_URL > BUKI_API_URL > BUKI_BASE_URL > default', () => {
+  assert.equal(resolveBukiUrl({}), DEFAULT_BUKI_URL);
+  assert.equal(
+    resolveBukiUrl({ BUKI_BASE_URL: 'https://base.example.com/' }),
+    'https://base.example.com'
+  );
+  assert.equal(
+    resolveBukiUrl({
+      BUKI_API_URL: 'https://api.example.com/',
+      BUKI_BASE_URL: 'https://base.example.com/',
+    }),
+    'https://api.example.com'
+  );
+  assert.equal(
+    resolveBukiUrl({
+      BUKI_URL: 'https://my-buki.onrender.com/',
+      BUKI_API_URL: 'https://api.example.com/',
+      BUKI_BASE_URL: 'https://base.example.com/',
+    }),
+    'https://my-buki.onrender.com'
+  );
+});
+
+test('BukiClient sends Bearer BUKI_API_TOKEN to normalized Buki URL and fails clearly if token missing', async () => {
+  const capturedCalls = [];
+
+  const client = new BukiClient({
+    baseUrl: 'https://my-buki.onrender.com///',
+    apiToken: TEST_BUKI_TOKEN,
+    fetchImpl: async (url, init) => {
+      capturedCalls.push({ url, auth: init.headers.Authorization, method: init.method });
+      if (url.endsWith('/health')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ status: 'ok', service: 'buki-connector-kit' }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          question: 'Who owes us money?',
+          answer: '2 invoices are overdue.',
+          figures: [{ label: 'Overdue outstanding', value: 'GBP 12,000' }],
+          cited: { source: 'sage', syncedAt: '2026-11-25T16:11:45.217Z', records: 25 },
+        }),
+      };
+    },
+  });
+
+  const health = await client.checkHealth();
+  assert.equal(health.status, 'ok');
+  assert.equal(capturedCalls[0].url, 'https://my-buki.onrender.com/health');
+  assert.equal(capturedCalls[0].auth, `Bearer ${TEST_BUKI_TOKEN}`);
+
+  const brief = await client.query({ query: 'Who owes us money?' });
+  assert.match(brief.answer, /2 invoices are overdue/);
+  assert.match(brief.answer, /Overdue outstanding/);
+  assert.equal(brief.citations.length, 1);
+  assert.equal(
+    capturedCalls[1].url,
+    'https://my-buki.onrender.com/brief?q=Who%20owes%20us%20money%3F'
+  );
+  assert.equal(capturedCalls[1].auth, `Bearer ${TEST_BUKI_TOKEN}`);
+
+  const unconfiguredClient = new BukiClient({
+    baseUrl: 'https://my-buki.onrender.com',
+    apiToken: '',
+  });
+  await assert.rejects(
+    () => unconfiguredClient.checkHealth(),
+    (err) => err instanceof BukiClientError && err.code === 'BUKI_CONFIG_ERROR'
+  );
 });

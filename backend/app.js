@@ -5,12 +5,14 @@ const cors = require('cors');
 const config = require('./config/env');
 const { isDatabaseConnected } = require('./config/db');
 const { createQueryRouter } = require('./routes/query');
+const { requireAuth } = require('./middleware/auth');
 const { SageServiceError } = require('./services/sageConnector');
+const { defaultBukiClient, BukiClientError } = require('./services/bukiClient');
 
 /**
  * Builds the Express application with injectable dependencies for clean testing.
  */
-function createApp({ authMiddleware, sageConnector } = {}) {
+function createApp({ authMiddleware, sageConnector, bukiClient = defaultBukiClient } = {}) {
   const app = express();
 
   app.use(
@@ -44,8 +46,23 @@ function createApp({ authMiddleware, sageConnector } = {}) {
       database: isDatabaseConnected() ? 'connected' : 'disconnected',
       sageMode: (sageConnector?.mockMode ?? config.sageMockMode) ? 'mock' : 'live',
       timeoutMs: sageConnector?.timeoutMs ?? config.sageTimeoutMs,
+      bukiUrl: bukiClient?.baseUrl || config.bukiUrl,
+      bukiTokenConfigured: Boolean(bukiClient?.apiToken || config.bukiApiToken),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  app.get('/api/buki/health', authMiddleware || requireAuth, async (_req, res, next) => {
+    try {
+      const upstream = await bukiClient.checkHealth();
+      return res.status(200).json({
+        ok: true,
+        target: bukiClient.baseUrl,
+        upstream,
+      });
+    } catch (err) {
+      return next(err);
+    }
   });
 
   app.use('/api/query', createQueryRouter({ authMiddleware, sageConnector }));
@@ -89,7 +106,7 @@ function createApp({ authMiddleware, sageConnector } = {}) {
   }
 
   app.use((err, _req, res, _next) => {
-    if (err instanceof SageServiceError) {
+    if (err instanceof SageServiceError || err instanceof BukiClientError) {
       return res.status(err.statusCode).json({
         ok: false,
         error: {

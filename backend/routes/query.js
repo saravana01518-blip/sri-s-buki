@@ -4,6 +4,7 @@ const { isDatabaseConnected } = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
 const { validateQueryRequest } = require('../middleware/validateQuery');
 const { defaultSageConnector, SageServiceError } = require('../services/sageConnector');
+const { defaultBukiClient } = require('../services/bukiClient');
 
 /**
  * Persists a query audit record when MongoDB is connected without failing the user request.
@@ -25,6 +26,7 @@ async function recordQueryLog(entry) {
 function createQueryRouter({
   authMiddleware = requireAuth,
   sageConnector = defaultSageConnector,
+  bukiClient = defaultBukiClient,
 } = {}) {
   const router = express.Router();
 
@@ -33,11 +35,14 @@ function createQueryRouter({
     const { query, context } = req.validatedQuery;
 
     try {
-      const result = await sageConnector.querySage({
-        query,
-        context,
-        user: req.user,
-      });
+      const useBukiUpstream = !sageConnector.mockMode && !sageConnector.apiUrl;
+      const result = useBukiUpstream
+        ? await bukiClient.query({ query, context })
+        : await sageConnector.querySage({
+            query,
+            context,
+            user: req.user,
+          });
 
       const latencyMs = Date.now() - startedAt;
 

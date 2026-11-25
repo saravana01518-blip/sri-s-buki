@@ -1,5 +1,15 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const RAW_API_BASE =
+  import.meta.env.VITE_BUKI_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BUKI_API_URL ||
+  '';
+const API_BASE = RAW_API_BASE.trim().replace(/\/+$/, '');
 const CLIENT_TIMEOUT_MS = 4500;
+
+function buildApiUrl(path) {
+  const cleanPath = String(path || '').trim().replace(/^\/+/, '');
+  return API_BASE ? `${API_BASE}/${cleanPath}` : `/${cleanPath}`;
+}
 
 export class ApiClientError extends Error {
   constructor(message, { status = 500, code = 'CLIENT_ERROR' } = {}) {
@@ -26,7 +36,7 @@ async function requestJson(path, { method = 'GET', token = '', body } = {}) {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetch(buildApiUrl(path), {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -56,10 +66,13 @@ async function requestJson(path, { method = 'GET', token = '', body } = {}) {
         code: 'CLIENT_TIMEOUT',
       });
     }
-    throw new ApiClientError('Unable to reach Buki backend server. Verify it is running on port 5000.', {
-      status: 0,
-      code: 'NETWORK_ERROR',
-    });
+    throw new ApiClientError(
+      `Unable to reach Buki backend server (${API_BASE || 'same-origin'}). Verify it is running and reachable.`,
+      {
+        status: 0,
+        code: 'NETWORK_ERROR',
+      }
+    );
   } finally {
     clearTimeout(timer);
   }
