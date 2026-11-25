@@ -4,7 +4,7 @@ const RAW_API_BASE =
   import.meta.env.VITE_BUKI_API_URL ||
   '';
 const API_BASE = RAW_API_BASE.trim().replace(/\/+$/, '');
-const CLIENT_TIMEOUT_MS = 4500;
+const CLIENT_TIMEOUT_MS = 20000;
 
 function buildApiUrl(path) {
   const cleanPath = String(path || '').trim().replace(/^\/+/, '');
@@ -80,6 +80,10 @@ async function requestJson(path, { method = 'GET', token = '', body } = {}) {
 
 export function fetchHealth() {
   return requestJson('/api/health');
+}
+
+export function checkBukiHealth(token) {
+  return requestJson('/api/buki/health', { method: 'GET', token });
 }
 
 export function verifySessionToken(token) {

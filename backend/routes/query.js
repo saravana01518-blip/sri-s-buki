@@ -4,7 +4,7 @@ const { isDatabaseConnected } = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
 const { validateQueryRequest } = require('../middleware/validateQuery');
 const { defaultSageConnector, SageServiceError } = require('../services/sageConnector');
-const { defaultBukiClient } = require('../services/bukiClient');
+const { defaultBukiClient, BukiClientError } = require('../services/bukiClient');
 
 /**
  * Persists a query audit record when MongoDB is connected without failing the user request.
@@ -70,12 +70,15 @@ function createQueryRouter({
       });
     } catch (err) {
       const latencyMs = Date.now() - startedAt;
-      const isTimeout = err instanceof SageServiceError && err.code === 'SAGE_TIMEOUT';
+      const isTimeout =
+        (err instanceof SageServiceError && err.code === 'SAGE_TIMEOUT') ||
+        (err instanceof BukiClientError && err.code === 'BUKI_TIMEOUT');
+      const useBukiUpstream = !sageConnector.mockMode && !sageConnector.apiUrl;
 
       await recordQueryLog({
         userId: req.user.id,
         query,
-        provider: sageConnector.mockMode ? 'sage-mock' : 'sage',
+        provider: sageConnector.mockMode ? 'sage-mock' : useBukiUpstream ? 'buki' : 'sage',
         latencyMs,
         status: isTimeout ? 'timeout' : 'error',
         errorCode: err?.code || 'INTERNAL_ERROR',

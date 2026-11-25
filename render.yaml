@@ -19,6 +19,8 @@ services:
         value: "false"
       - key: SAGE_TIMEOUT_MS
         value: "3000"
+      - key: BUKI_TIMEOUT_MS
+        value: "15000"
       - key: MONGODB_URI
         sync: false
       - key: SAGE_API_URL

@@ -3,7 +3,76 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Buki × Sage — Internal Assistant</title>
+    <title>Buki Sage Connector — Integration Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      globalThis.tailwind = globalThis.tailwind || {};
+      globalThis.tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'success': '#047857',
+              'on-success': '#FFFFFF',
+              'success-container': '#D1FAE5',
+              'on-success-container': '#065F46',
+              'warning': '#B45309',
+              'on-warning': '#FFFFFF',
+              'warning-container': '#FEF3C7',
+              'on-warning-container': '#92400E',
+              'light-primary': '#4F46E5',
+              'light-on-primary': '#FFFFFF',
+              'light-primary-container': '#E0E7FF',
+              'light-on-primary-container': '#312E81',
+              'light-secondary': '#475569',
+              'light-on-secondary': '#FFFFFF',
+              'light-error': '#BE123C',
+              'light-error-container': '#FFE4E6',
+              'light-on-error-container': '#9F1239',
+              'light-surface': '#F8FAFC',
+              'light-surface-container-lowest': '#FFFFFF',
+              'light-surface-container-low': '#F8FAFC',
+              'light-surface-container': '#F1F5F9',
+              'light-surface-container-highest': '#CBD5E1',
+              'light-on-surface': '#0F172A',
+              'light-on-surface-variant': '#475569',
+              'light-outline': '#64748B',
+              'light-outline-variant': '#E2E8F0',
+              'light-inverse-surface': '#0F172A',
+              'light-inverse-on-surface': '#F8FAFC',
+              'light-scrim': '#0F172A',
+            },
+            borderRadius: {
+              'xs': '4px',
+              'sm': '6px',
+              'DEFAULT': '8px',
+              'md': '12px',
+              'lg': '16px',
+              'full': '9999px',
+            },
+            spacing: {
+              'gutter-xs': '4px',
+              'gutter-sm': '8px',
+              'gutter-md': '12px',
+              'gutter-lg': '16px',
+              'gutter-xl': '24px',
+              'section': '32px',
+              'page-margin': '24px',
+            },
+            fontFamily: {
+              'display': ['"Wix Madefor Display"', 'sans-serif'],
+              'headline': ['"Wix Madefor Display"', 'sans-serif'],
+              'title': ['"Instrument Sans"', 'sans-serif'],
+              'body': ['"Instrument Sans"', 'sans-serif'],
+              'label': ['"Instrument Sans"', 'sans-serif'],
+              'mono': ['"Red Hat Mono"', 'monospace'],
+            },
+          },
+        },
+      };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Wix+Madefor+Display:wght@500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>

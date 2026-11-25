@@ -6,7 +6,7 @@ const { createApp } = require('../app');
 const { createAuthMiddleware } = require('../middleware/auth');
 const { SageConnector } = require('../services/sageConnector');
 const { BukiClient, BukiClientError } = require('../services/bukiClient');
-const { resolveBukiUrl, DEFAULT_BUKI_URL } = require('../config/env');
+const { resolveBukiUrl, resolveBukiApiToken, parseCorsOrigin, DEFAULT_BUKI_URL } = require('../config/env');
 const { normalizeBaseUrl, joinUrl } = require('../utils/url');
 
 const TEST_BUKI_TOKEN = 'test-buki-internal-token';
@@ -349,4 +349,52 @@ test('SKIP_TOKEN_PROMPT auto-authenticates requests without Authorization header
   } finally {
     await new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   }
+});
+
+test('resolveBukiApiToken never falls back to dev token in production', () => {
+  assert.equal(resolveBukiApiToken({ NODE_ENV: 'production' }), '');
+  assert.equal(
+    resolveBukiApiToken({ NODE_ENV: 'production', ALLOW_DEV_DEFAULT_TOKEN: 'true' }),
+    ''
+  );
+  assert.equal(
+    resolveBukiApiToken({ NODE_ENV: 'development', ALLOW_DEV_DEFAULT_TOKEN: 'true' }),
+    'buki-dev-internal-token-change-me'
+  );
+  assert.deepEqual(
+    parseCorsOrigin('https://sri-s-buki.onrender.com/, http://localhost:5173/'),
+    ['https://sri-s-buki.onrender.com', 'http://localhost:5173']
+  );
+});
+
+test('BukiClient rejects non-JSON or missing answer with 502 BUKI_INVALID_RESPONSE', async () => {
+  const nonJsonClient = new BukiClient({
+    baseUrl: 'https://my-buki.onrender.com',
+    apiToken: TEST_BUKI_TOKEN,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected token <');
+      },
+    }),
+  });
+  await assert.rejects(
+    () => nonJsonClient.checkHealth(),
+    (err) => err instanceof BukiClientError && err.code === 'BUKI_INVALID_RESPONSE' && err.statusCode === 502
+  );
+
+  const emptyAnswerClient = new BukiClient({
+    baseUrl: 'https://my-buki.onrender.com',
+    apiToken: TEST_BUKI_TOKEN,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ question: 'test', answer: '' }),
+    }),
+  });
+  await assert.rejects(
+    () => emptyAnswerClient.query({ query: 'test' }),
+    (err) => err instanceof BukiClientError && err.code === 'BUKI_INVALID_RESPONSE' && err.statusCode === 502
+  );
 });

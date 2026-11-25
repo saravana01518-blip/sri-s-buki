@@ -18,7 +18,7 @@ class BukiClient {
   constructor(options = {}) {
     this.baseUrl = normalizeBaseUrl(options.baseUrl ?? defaultConfig.bukiUrl);
     this.apiToken = String(options.apiToken ?? defaultConfig.bukiApiToken ?? '').trim();
-    this.timeoutMs = options.timeoutMs ?? defaultConfig.sageTimeoutMs ?? 3000;
+    this.timeoutMs = options.timeoutMs ?? defaultConfig.bukiTimeoutMs ?? 15000;
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
   }
 
@@ -91,7 +91,14 @@ class BukiClient {
         });
       }
 
-      return await response.json();
+      try {
+        return await response.json();
+      } catch {
+        throw new BukiClientError('Buki backend returned malformed or non-JSON response.', {
+          statusCode: 502,
+          code: 'BUKI_INVALID_RESPONSE',
+        });
+      }
     } catch (err) {
       if (err instanceof BukiClientError) {
         throw err;
@@ -121,6 +128,13 @@ class BukiClient {
       method: 'GET',
     });
 
+    if (typeof payload?.answer !== 'string' || !payload.answer.trim()) {
+      throw new BukiClientError('Buki backend response did not include an answer payload.', {
+        statusCode: 502,
+        code: 'BUKI_INVALID_RESPONSE',
+      });
+    }
+
     const figuresText = Array.isArray(payload?.figures) && payload.figures.length > 0
       ? '\n\n' + payload.figures.map((f) => `- **${f.label}:** ${f.value}`).join('\n')
       : '';
@@ -136,7 +150,7 @@ class BukiClient {
 
     return {
       requestId: `buki_${Date.now()}`,
-      answer: `${payload?.answer || ''}${figuresText}`.trim(),
+      answer: `${payload.answer.trim()}${figuresText}`.trim(),
       citations,
       provider: 'buki',
     };

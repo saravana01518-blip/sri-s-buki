@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import AuthGate from './components/AuthGate';
-import QueryAssistant from './components/QueryAssistant';
+import IntegrationDashboard from './components/IntegrationDashboard';
 import { fetchHealth } from './services/api';
 
 const TOKEN_STORAGE_KEY = 'buki_internal_token';
@@ -74,7 +74,7 @@ export default function App() {
   }
 
   return (
-    <QueryAssistant
+    <IntegrationDashboard
       token={token}
       onUnauthorized={handleUnauthorized}
       onSignOut={handleSignOut}
