@@ -40,14 +40,18 @@ function createApp({ authMiddleware, sageConnector, bukiClient = defaultBukiClie
   });
 
   app.get('/api/health', (_req, res) => {
+    const isMock = sageConnector?.mockMode ?? config.sageMockMode;
+    const hasSageUrl = Boolean(sageConnector?.apiUrl ?? config.sageApiUrl);
+
     res.status(200).json({
       ok: true,
       service: 'buki-sage-backend',
       database: isDatabaseConnected() ? 'connected' : 'disconnected',
-      sageMode: (sageConnector?.mockMode ?? config.sageMockMode) ? 'mock' : 'live',
+      sageMode: isMock ? 'mock' : hasSageUrl ? 'live' : 'buki-upstream',
       timeoutMs: sageConnector?.timeoutMs ?? config.sageTimeoutMs,
       bukiUrl: bukiClient?.baseUrl || config.bukiUrl,
       bukiTokenConfigured: Boolean(bukiClient?.apiToken || config.bukiApiToken),
+      skipTokenPrompt: Boolean(config.skipTokenPrompt),
       timestamp: new Date().toISOString(),
     });
   });

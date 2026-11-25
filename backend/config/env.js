@@ -37,8 +37,10 @@ const config = {
   mongoUri: process.env.MONGODB_URI || '',
   bukiUrl: resolveBukiUrl(process.env),
   bukiApiToken: (process.env.BUKI_API_TOKEN || '').trim(),
+  skipTokenPrompt:
+    process.env.SKIP_TOKEN_PROMPT === 'true' || process.env.AUTO_AUTH === 'true',
   sageApiUrl: normalizeBaseUrl(process.env.SAGE_API_URL || ''),
-  sageApiKey: (process.env.SAGE_API_KEY || '').trim(),
+  sageApiKey: (process.env.SAGE_API_KEY || process.env.BUKI_API_TOKEN || '').trim(),
   sageTimeoutMs: parsePositiveInt(process.env.SAGE_TIMEOUT_MS, 3000),
   sageMockMode: process.env.SAGE_MOCK_MODE === 'true',
 };

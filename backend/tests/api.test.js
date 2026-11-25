@@ -312,3 +312,41 @@ test('BukiClient sends Bearer BUKI_API_TOKEN to normalized Buki URL and fails cl
     (err) => err instanceof BukiClientError && err.code === 'BUKI_CONFIG_ERROR'
   );
 });
+
+test('SKIP_TOKEN_PROMPT auto-authenticates requests without Authorization header while rejecting invalid tokens', async () => {
+  const autoAuthApp = createApp({
+    authMiddleware: createAuthMiddleware(
+      () => TEST_BUKI_TOKEN,
+      () => true
+    ),
+    sageConnector: new SageConnector({ mockMode: true }),
+  });
+
+  const server = http.createServer(autoAuthApp);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const noHeaderRes = await fetch(`${baseUrl}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'Auto-auth check' }),
+    });
+    assert.equal(noHeaderRes.status, 200);
+    const noHeaderBody = await noHeaderRes.json();
+    assert.equal(noHeaderBody.ok, true);
+
+    const badHeaderRes = await fetch(`${baseUrl}/api/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer invalid-token',
+      },
+      body: JSON.stringify({ query: 'Bad token check' }),
+    });
+    assert.equal(badHeaderRes.status, 401);
+  } finally {
+    await new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+});

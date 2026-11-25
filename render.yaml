@@ -13,8 +13,10 @@ services:
         value: https://my-buki.onrender.com
       - key: BUKI_API_TOKEN
         generateValue: true
-      - key: SAGE_MOCK_MODE
+      - key: SKIP_TOKEN_PROMPT
         value: "true"
+      - key: SAGE_MOCK_MODE
+        value: "false"
       - key: SAGE_TIMEOUT_MS
         value: "3000"
       - key: MONGODB_URI

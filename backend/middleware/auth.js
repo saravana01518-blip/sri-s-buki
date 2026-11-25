@@ -15,9 +15,13 @@ function safeTokenEquals(provided, expected) {
 
 /**
  * Creates Bearer token authentication middleware.
- * Rejects missing, malformed, or invalid tokens with 401 Unauthorized.
+ * Rejects missing, malformed, or invalid tokens with 401 Unauthorized,
+ * unless allowAutoAuth() is true and no Authorization header was sent.
  */
-function createAuthMiddleware(getExpectedToken = () => config.bukiApiToken) {
+function createAuthMiddleware(
+  getExpectedToken = () => config.bukiApiToken,
+  allowAutoAuth = () => false
+) {
   return function requireAuth(req, res, next) {
     const expectedToken = getExpectedToken();
     if (!expectedToken) {
@@ -31,7 +35,25 @@ function createAuthMiddleware(getExpectedToken = () => config.bukiApiToken) {
     }
 
     const authHeader = req.headers.authorization;
-    if (!authHeader || typeof authHeader !== 'string') {
+    if (!authHeader) {
+      if (allowAutoAuth()) {
+        req.user = {
+          id: 'buki-team-member',
+          role: 'internal',
+          authMode: 'auto',
+        };
+        return next();
+      }
+      return res.status(401).json({
+        ok: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Missing Authorization header. Expected Bearer token.',
+        },
+      });
+    }
+
+    if (typeof authHeader !== 'string') {
       return res.status(401).json({
         ok: false,
         error: {
@@ -74,5 +96,8 @@ function createAuthMiddleware(getExpectedToken = () => config.bukiApiToken) {
 
 module.exports = {
   createAuthMiddleware,
-  requireAuth: createAuthMiddleware(),
+  requireAuth: createAuthMiddleware(
+    () => config.bukiApiToken,
+    () => config.skipTokenPrompt
+  ),
 };
