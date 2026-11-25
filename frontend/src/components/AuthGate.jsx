@@ -2,10 +2,17 @@ import { useState } from 'react';
 import { KeyRound, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { verifySessionToken } from '../services/api';
 
-export default function AuthGate({ onAuthenticated, initialError = '' }) {
+export default function AuthGate({
+  onAuthenticated,
+  onAutoConnect = null,
+  serverHealth = null,
+  initialError = '',
+}) {
   const [token, setToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(initialError);
+
+  const missingServerToken = serverHealth && serverHealth.bukiTokenConfigured === false;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -40,6 +47,17 @@ export default function AuthGate({ onAuthenticated, initialError = '' }) {
             <p>Internal Team Assistant — Session Required</p>
           </div>
         </div>
+
+        {missingServerToken && (
+          <div className="error-banner" role="alert">
+            <AlertCircle size={16} />
+            <span>
+              Server <code>BUKI_API_TOKEN</code> is not configured. Set <code>BUKI_API_TOKEN</code>{' '}
+              (and optionally <code>SKIP_TOKEN_PROMPT=true</code>) in Render → Environment or{' '}
+              <code>backend/.env</code>.
+            </span>
+          </div>
+        )}
 
         {error && (
           <div className="error-banner" role="alert">
@@ -77,6 +95,17 @@ export default function AuthGate({ onAuthenticated, initialError = '' }) {
               'Connect to Sage'
             )}
           </button>
+
+          {onAutoConnect && (
+            <button
+              type="button"
+              onClick={onAutoConnect}
+              className="btn-primary"
+              style={{ marginTop: '8px', opacity: 0.9 }}
+            >
+              Continue with Server Session
+            </button>
+          )}
         </form>
       </div>
     </div>

@@ -398,3 +398,30 @@ test('BukiClient rejects non-JSON or missing answer with 502 BUKI_INVALID_RESPON
     (err) => err instanceof BukiClientError && err.code === 'BUKI_INVALID_RESPONSE' && err.statusCode === 502
   );
 });
+
+test('Missing BUKI_API_TOKEN returns 503 AUTH_NOT_CONFIGURED even when SKIP_TOKEN_PROMPT is enabled', async () => {
+  const misconfiguredApp = createApp({
+    authMiddleware: createAuthMiddleware(
+      () => '',
+      () => true
+    ),
+    sageConnector: new SageConnector({ mockMode: true }),
+  });
+
+  const server = http.createServer(misconfiguredApp);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'Check missing token' }),
+    });
+    const body = await res.json();
+    assert.equal(res.status, 503);
+    assert.equal(body.error.code, 'AUTH_NOT_CONFIGURED');
+  } finally {
+    await new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+});
