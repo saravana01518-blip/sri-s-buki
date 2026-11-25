@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const config = require('./config/env');
@@ -48,7 +50,7 @@ function createApp({ authMiddleware, sageConnector } = {}) {
 
   app.use('/api/query', createQueryRouter({ authMiddleware, sageConnector }));
 
-  app.use((_req, res) => {
+  app.use('/api', (_req, res) => {
     res.status(404).json({
       ok: false,
       error: {
@@ -57,6 +59,34 @@ function createApp({ authMiddleware, sageConnector } = {}) {
       },
     });
   });
+
+  const frontendDistDir = path.resolve(__dirname, '../frontend/dist');
+  const frontendIndexFile = path.join(frontendDistDir, 'index.html');
+
+  if (fs.existsSync(frontendIndexFile)) {
+    app.use(express.static(frontendDistDir));
+    app.get('*', (_req, res) => {
+      res.status(200).sendFile(frontendIndexFile);
+    });
+  } else {
+    app.get('/', (_req, res) => {
+      res.status(200).json({
+        ok: true,
+        service: 'buki-sage-backend',
+        health: '/api/health',
+      });
+    });
+
+    app.use((_req, res) => {
+      res.status(404).json({
+        ok: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Route not found.',
+        },
+      });
+    });
+  }
 
   app.use((err, _req, res, _next) => {
     if (err instanceof SageServiceError) {

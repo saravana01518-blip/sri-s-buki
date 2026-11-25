@@ -38,6 +38,16 @@ npm run dev
 
 Open `http://localhost:5173` and authenticate with your `BUKI_API_TOKEN` (default dev token in `backend/.env.example`: `buki-dev-internal-token-change-me`).
 
+### 3. Single-Command Production Build & Start (Render / Unified Host)
+
+From the repository root:
+
+```bash
+npm install && npm run build && npm start
+```
+
+Express automatically serves the built `frontend/dist` bundle on `/` and API routes on `/api/*`. See `render.yaml` for Render Web Service deployment settings.
+
 ## API Contract
 
 ### `GET /api/health`
